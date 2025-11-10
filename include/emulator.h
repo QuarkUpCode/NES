@@ -28,6 +28,8 @@ typedef struct {
 	uint8_t PPUDATA;
 	uint8_t OAMDMA;
 
+	uint8_t PPUGenLatch;	//just read the doc; what the actual fuck
+	//i guess TODO : after N CPU cycles (3-30ms) decay bit in PPUGenLatch ??
 } PPU_registers;
 
 
