@@ -1,0 +1,34 @@
+#ifndef EMULATOR_H
+#define EMULATOR_H
+
+#include <stdint.h>
+
+
+
+typedef struct {
+
+	uint8_t A;		//Accumulator
+	uint8_t X;		//GP X register
+	uint8_t Y;		//GP Y register
+	uint16_t PC;	//Program Counter
+	uint8_t S;		//Stack Pointer
+	uint8_t P;		//Status
+
+} CPU_registers;
+
+typedef struct {
+
+	uint8_t PPUCTRL;
+	uint8_t PPUMASK;
+	uint8_t PPUSTATUS;
+	uint8_t OAMADDR;
+	uint8_t OAMDATA;
+	uint8_t PPUSCROLL;
+	uint8_t PPUADDR;
+	uint8_t PPUDATA;
+	uint8_t OAMDMA;
+
+} PPU_registers;
+
+
+#endif

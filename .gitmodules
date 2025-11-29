@@ -1,0 +1,3 @@
+[submodule "src/lib/quarklib"]
+	path = src/lib/quarklib
+	url = git@github.com:QuarkUpCode/quarklib.git
