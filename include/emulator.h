@@ -32,5 +32,7 @@ typedef struct {
 	//i guess TODO : after N CPU cycles (3-30ms) decay bit in PPUGenLatch ??
 } PPU_registers;
 
+//TODO : struct for memory in order to be able to handle bank swaps etc
+uint8_t fetch(uint8_t* memory, uint16_t address);
 
 #endif
