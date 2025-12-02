@@ -120,11 +120,324 @@ opcode_meta_t parse_opcode(uint8_t opcode){
 
 
 //probably one of the worst
-void execute_instruction(NES_state* nes, opcode_meta_t meta){
+void execute_instruction(NES_state* nes, operation_t op){
 	
-	switch(meta.instruction){
+	uint16_t tmp;
+
+	switch(op.instruction){
+		/* Access */
+		case LDA:
+			nes->cpu.A = op.value;
+			flag_set_zero(nes, op.value == 0);
+			flag_set_negative(nes, (op.value&0b10000000) != 0);
+			break;
+		case STA:
+			writemm(nes, op.address, nes->cpu.A);
+			break;
+		case LDX:
+			nes->cpu.X = op.value;
+			flag_set_zero(nes, op.value == 0);
+			flag_set_negative(nes, (op.value&0b10000000) != 0);
+			break;
+		case STX:
+			writemm(nes, op.address, nes->cpu.X);
+			break;
+		case LDY:
+			nes->cpu.Y = op.value;
+			flag_set_zero(nes, op.value == 0);
+			flag_set_negative(nes, (op.value&0b10000000) != 0);
+			break;
+		case STY:
+			writemm(nes, op.address, nes->cpu.Y);
+			break;
+
+		/* Transfer */
+		case TAX:
+			nes->cpu.X = nes->cpu.A;
+			flag_set_zero(nes, nes->cpu.A == 0);
+			flag_set_negative(nes, (nes->cpu.A&0b10000000) != 0);
+			break;
+		case TXA:
+			nes->cpu.A = nes->cpu.X;
+			flag_set_zero(nes, nes->cpu.X == 0);
+			flag_set_negative(nes, (nes->cpu.X&0b10000000) != 0);
+			break;
+		case TAY:
+			nes->cpu.Y = nes->cpu.A;
+			flag_set_zero(nes, nes->cpu.A == 0);
+			flag_set_negative(nes, (nes->cpu.A&0b10000000) != 0);
+			break;
+		case TYA:
+			nes->cpu.A = nes->cpu.Y;
+			flag_set_zero(nes, nes->cpu.Y == 0);
+			flag_set_negative(nes, (nes->cpu.Y&0b10000000) != 0);
+			break;
+
+		/* Arithmetic */
 		case ADC:
-			
+			tmp = nes->cpu.A + op.value + flag_get_carry(nes);
+			flag_set_carry(nes, tmp > 0xFF);
+			flag_set_zero(nes, nes->cpu.A == 0);
+			flag_set_overflow(nes, (tmp ^ nes->cpu.A) & (tmp ^ op.value) & 0x80);
+			flag_set_negative(nes, (nes->cpu.A&0b10000000) != 0);
+			// if(tmp > 0xFF) flag_set_carry(nes, 1);
+			nes->cpu.A = tmp&0xFF;
+			break;
+		//could invert op.value then jump to ADC
+		case SBC:
+			tmp = nes->cpu.A + (~op.value) + flag_get_carry(nes);
+			flag_set_carry(nes, tmp > 0xFF);
+			flag_set_zero(nes, nes->cpu.A == 0);
+			flag_set_overflow(nes, (tmp ^ nes->cpu.A) & (tmp ^ (~op.value)) & 0x80);
+			flag_set_negative(nes, (nes->cpu.A&0b10000000) != 0);
+			nes->cpu.A = tmp&0xFF;
+			break;
+		case INC:
+			tmp = (op.value + 1)&0xFF;
+			flag_set_zero(nes, tmp == 0x00);
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			writemm(nes, op.address, tmp);
+			break;
+		case DEC:
+			tmp = (op.value - 1)&0xFF;
+			flag_set_zero(nes, tmp == 0x00);
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			writemm(nes, op.address, tmp);
+			break;
+		case INX:
+			tmp = (nes->cpu.X + 1)&0xFF;
+			flag_set_zero(nes, tmp == 0x00);
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			nes->cpu.X = tmp;
+			break;
+		case DEX:
+			tmp = (nes->cpu.X - 1)&0xFF;
+			flag_set_zero(nes, tmp == 0x00);
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			nes->cpu.X = tmp;
+			break;
+		case INY:
+			tmp = (nes->cpu.Y + 1)&0xFF;
+			flag_set_zero(nes, tmp == 0x00);
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			nes->cpu.Y = tmp;
+			break;
+		case DEY:
+			tmp = (nes->cpu.Y - 1)&0xFF;
+			flag_set_zero(nes, tmp == 0x00);
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			nes->cpu.Y = tmp;
+			break;
+	
+		/* Shift */
+		case ASL:
+			tmp = op.value << 1;
+			flag_set_carry(nes, (op.value&0b10000000) != 0);
+			flag_set_zero(nes, tmp == 0);
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			if(op.fucking_accumulator) nes->cpu.A = tmp;
+			else writemm(nes, op.address, tmp);
+			break;
+		case LSR:
+			tmp = op.value >> 1;
+			flag_set_carry(nes, op.value&0x01);
+			flag_set_zero(nes, tmp == 0);
+			flag_set_negative(nes, 0);
+			if(op.fucking_accumulator) nes->cpu.A = tmp;
+			else writemm(nes, op.address, tmp);
+			break;
+		case ROL:
+			//not sure about carry order
+			tmp = op.value << 1;
+			tmp |= flag_get_carry(nes);
+			flag_set_carry(nes, (op.value&0b10000000) != 0);
+			if(op.fucking_accumulator) nes->cpu.A = tmp;
+			else{
+				//dummy write bc read-modify-write writes og value first then write new value i think ??
+				writemm(nes, op.address, op.value);
+				writemm(nes, op.address, tmp);
+			}
+			break;
+		case ROR:
+			//not sure about carry order
+			tmp = op.value >> 1;
+			tmp |= flag_get_carry(nes)<<7;
+			flag_set_carry(nes, op.value&0x01);
+			if(op.fucking_accumulator) nes->cpu.A = tmp;
+			else{
+				//dummy write bc read-modify-write writes og value first then write new value i think ??
+				writemm(nes, op.address, op.value);
+				writemm(nes, op.address, tmp);
+			}
+			break;
+
+		/* Bitwise */
+		case AND:
+			tmp = nes->cpu.A & op.value;	//convoluted but i dont like setting flags by calling the register directly
+			flag_set_zero(nes, tmp == 0);
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			nes->cpu.A = tmp;
+			break;
+		case ORA:
+			tmp = nes->cpu.A | op.value;	//convoluted but i dont like setting flags by calling the register directly
+			flag_set_zero(nes, tmp == 0);
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			nes->cpu.A = tmp;
+			break;
+		case EOR:
+			tmp = nes->cpu.A ^ op.value;	//convoluted but i dont like setting flags by calling the register directly
+			flag_set_zero(nes, tmp == 0);
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			nes->cpu.A = tmp;
+			break;
+		case BIT:
+			//only sets flags
+			tmp = nes->cpu.A & op.value;
+			flag_set_zero(nes, tmp == 0);
+			flag_set_overflow(nes, (op.value&0b01000000) != 0);
+			flag_set_negative(nes, (op.value&0b10000000) != 0);
+			break;
+
+		/* Compare */
+		case CMP:	//should use tmp instead of comparing using nes->cpu.R
+			tmp = nes->cpu.A - op.value;
+			flag_set_carry(nes, nes->cpu.A>=op.value);
+			flag_set_zero(nes, nes->cpu.A == op.value);	//could do !tmp;
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			break;
+		case CPX:	//if i do the bit parsing instead of lookup i can just call the same as CMP but with x instead of a
+			tmp = nes->cpu.X - op.value;
+			flag_set_carry(nes, nes->cpu.X>=op.value);
+			flag_set_zero(nes, nes->cpu.X == op.value);	//could do !tmp;
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			break;
+		case CPY:
+			tmp = nes->cpu.Y - op.value;
+			flag_set_carry(nes, nes->cpu.Y>=op.value);
+			flag_set_zero(nes, nes->cpu.Y == op.value);	//could do !tmp;
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			break;
+
+		/* Branch */
+		case BCC:	//im pretty sure i dont need to add +2 because i already call nes->cpu.PC++ twice before reaching here
+			if(!flag_get_carry(nes)) nes->cpu.PC += (int8_t)op.value;	//could also check bit 7 and do two's copmlement 8bit to 16bit by hand but eh compiler's probably smarter than me
+			break;
+		case BCS:
+			if(flag_get_carry(nes)) nes->cpu.PC += (int8_t)op.value;	//could also check bit 7 and do two's copmlement 8bit to 16bit by hand but eh compiler's probably smarter than me
+			break;
+		case BEQ:
+			if(flag_get_zero(nes)) nes->cpu.PC += (int8_t)op.value;	//could also check bit 7 and do two's copmlement 8bit to 16bit by hand but eh compiler's probably smarter than me
+			break;
+		case BNE:
+			if(!flag_get_zero(nes)) nes->cpu.PC += (int8_t)op.value;	//could also check bit 7 and do two's copmlement 8bit to 16bit by hand but eh compiler's probably smarter than me
+			break;
+		case BPL:
+			if(!flag_get_negative(nes)) nes->cpu.PC += (int8_t)op.value;	//could also check bit 7 and do two's copmlement 8bit to 16bit by hand but eh compiler's probably smarter than me
+			break;
+		case BMI:
+			if(flag_get_negative(nes)) nes->cpu.PC += (int8_t)op.value;	//could also check bit 7 and do two's copmlement 8bit to 16bit by hand but eh compiler's probably smarter than me
+			break;
+		case BVC:
+			if(!flag_get_overflow(nes)) nes->cpu.PC += (int8_t)op.value;	//could also check bit 7 and do two's copmlement 8bit to 16bit by hand but eh compiler's probably smarter than me
+			break;
+		case BVS:
+			if(flag_get_overflow(nes)) nes->cpu.PC += (int8_t)op.value;	//could also check bit 7 and do two's copmlement 8bit to 16bit by hand but eh compiler's probably smarter than me
+			break;
+
+		/* Jump */
+		case JMP:
+			nes->cpu.PC = op.address;
+			break;
+		case JSR:
+			spush(nes, (nes->cpu.PC + 2) >> 8);
+			spush(nes, (nes->cpu.PC + 2) & 0xFF);
+			nes->cpu.PC = op.address;
+			break;
+		case RTS:
+			nes->cpu.PC = spull(nes);
+			nes->cpu.PC |= spull(nes) << 8;
+			break;
+		case BRK:
+
+			/*
+				For future me: dont forget : wiki says
+				"Unfortunately, a 6502 bug allows the BRK IRQ to be overridden by an NMI occurring at the same time. In this case, only the NMI handler is called; the IRQ handler is skipped. However, the break flag is still set in the flags byte pushed to the stack, so the NMI handler can detect that this occurred (albeit slowly) by checking this flag."
+			*/
+
+			spush(nes, (nes->cpu.PC + 2) >> 8);	//im writing it down like this rn cause im basically just copying the wiki page for the instructions, its probably the same as juste doing 0100+s = x, s--, and i do this explicitely in stack instructions so i should go with one or the other but not both cos it'd be ugly af
+			spush(nes, (nes->cpu.PC + 2) & 0xFF);
+			flag_set_break(nes, 1);	//prolly redundant since i do flags|0b00110000
+			// spush(nes, nes->cpu.flags);
+			spush(nes, flag_get_NV00DIZC(nes)|0b00110000);//same here, prolly same as the PHP instruction so yeah
+			flag_set_interrupt_disable(nes, 1);
+			nes->cpu.PC = 0xFFFE;
+			break;
+		case RTI:
+			flag_set_NVxxDIZC(nes, spull(nes), 0);
+			nes->cpu.PC = spull(nes);
+			nes->cpu.PC |= spull(nes) << 8;
+			break;
+
+		/* Stack */
+		case PHA:
+			writemm(nes, 0x0100 + nes->cpu.S, nes->cpu.A);
+			nes->cpu.S--;
+			break;
+		case PLA:
+			nes->cpu.S++;
+			tmp = fetch(nes, 0x0100 + nes->cpu.S);
+			flag_set_zero(nes, tmp == 0);
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			nes->cpu.A = tmp;
+			break;
+		case PHP:	//eww php
+			flag_set_break(nes, 1);	//prolly redundant since i do flags|0b00110000
+			writemm(nes, 0x0100 + nes->cpu.S, flag_get_NV00DIZC(nes)|0b00110000);
+			nes->cpu.S--;
+			break;
+		case PLP:
+			nes->cpu.S++;
+			flag_set_NVxxDIZC(nes, fetch(nes, 0x0100 + nes->cpu.S), 1);
+			break;
+		case TXS:
+			nes->cpu.S = nes->cpu.X;
+			break;
+		case TSX:
+			tmp = nes->cpu.S;
+			flag_set_zero(nes, tmp == 0);
+			flag_set_negative(nes, (tmp&0b10000000) != 0);
+			nes->cpu.X = tmp;
+			break;			
+
+		/* Flags */
+		case CLC:
+			flag_set_carry(nes, 0);
+			break;
+		case SEC:
+			flag_set_carry(nes, 0);
+			break;
+		case CLI:
+			nes->delay_I_value = 0;
+			nes->delay_I = 1;
+			break;
+		case SEI:
+			nes->delay_I_value = 1;
+			nes->delay_I = 1;
+			break;
+		case CLD:
+			flag_set_decimal(nes, 0);
+			break;
+		case SED:
+			flag_set_decimal(nes, 1);
+			break;
+		case CLV:
+			flag_set_overflow(nes, 0);
+			break;
+
+		/* Other */
+		case NOP:
+			// :p
+			break;
 
 		default:
 			break;
@@ -137,11 +450,13 @@ invalid_am:
 
 
 
-//TODO : instead of parsing opcodes with they mnemotecnic structure, just go with my first intuition of just having a big ass 256 bytes lookup table
+////TODO : instead of parsing opcodes with they mnemotecnic structure, just go with my first intuition of just having a big ass 256 bytes lookup table
+//update might go back to bit parsing
 
 void step(NES_state* nes){
 
 	// uint8_t opcode = fetch(nes, nes->cpu.PC);nes->cpu.PC++;
+	if(nes->delay_I&0x01) nes->delay_I = 0x80;
 	uint8_t opcode = fetch(nes, nes->cpu.PC++);
 	opcode_meta_t meta = parse_opcode(opcode);
 	
@@ -154,7 +469,8 @@ void step(NES_state* nes){
 
 		case ACCUMULATOR:
 			operation.value = nes->cpu.A;
-			operation.ptr = &(nes->cpu.A);
+			// operation.ptr = &(nes->cpu.A);
+			operation.fucking_accumulator = 1;
 			break;
 		case IMMEDIATE:
 			operation.value = fetch(nes, nes->cpu.PC++);
@@ -237,7 +553,11 @@ void step(NES_state* nes){
 
 	// uint8_t opcode = fetch(memory, CPU->PC); CPU->PC++;
 	// opcode_meta_t meta = parse_opcode(opcode);
-	
+	execute_instruction(nes, operation);
+	if(nes->delay_I&0x80){
+		flag_set_interrupt_disable(nes, nes->delay_I_value);
+		nes->delay_I &= ~0x80;
+	}
 
 }
 

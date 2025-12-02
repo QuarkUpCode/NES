@@ -126,7 +126,8 @@ typedef struct {
 	instruction_t instruction;
 	uint8_t value;
 	uint16_t address;
-	uint8_t* ptr;
+	uint8_t fucking_accumulator;
+	// uint8_t* ptr;
 
 } operation_t;
 
