@@ -32,7 +32,33 @@ typedef struct {
 	//i guess TODO : after N CPU cycles (3-30ms) decay bit in PPUGenLatch ??
 } PPU_registers;
 
+
+
+//not definitive, haven't read up on bank switching yet
+typedef struct {
+
+	uint8_t* ram;	//$0000-$07FF
+					//$0800-$1FFF	mirror
+					//$2000-$2007	PPU registers
+	uint8_t* wram;	//$6000-$7FFF	cartridge defined
+	uint8_t* rom;	//$8000-$FFFF	cartridge defined
+
+} CPU_memorymap;
+
+typedef struct {
+
+	CPU_registers cpu;
+	PPU_registers ppu;
+	CPU_memorymap cpu_mm;
+	uint8_t* cartridge;
+	uint64_t cycles;
+
+} NES_state;
+
+
 //TODO : struct for memory in order to be able to handle bank swaps etc
-uint8_t fetch(uint8_t* memory, uint16_t address);
+// uint8_t fetch(uint8_t* memory, uint16_t address);
+uint8_t fetch(NES_state* nes, uint16_t address);
+uint8_t flag_get_carry(NES_state* nes);
 
 #endif

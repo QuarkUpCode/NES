@@ -76,7 +76,9 @@ typedef enum {
 	SED,
 	CLV,
 
-	NOP
+	NOP,
+
+	ZZZ
 
 } instruction_t;
 
@@ -115,15 +117,17 @@ typedef struct {
 
 	instruction_t instruction;
 	addressing_mode_t addr_mode;
+	uint8_t cycles;
 
 } opcode_meta_t;
 
 typedef struct {
 
 	instruction_t instruction;
-	uint8_t operandA;
-	uint8_t operandB;
-	
+	uint8_t value;
+	uint16_t address;
+	uint8_t* ptr;
+
 } operation_t;
 
 
