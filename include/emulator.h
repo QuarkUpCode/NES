@@ -3,7 +3,14 @@
 
 #include <stdint.h>
 
+#define FLAG_C	0b00000001
+#define FLAG_Z	0b00000010
+#define FLAG_I	0b00000100
+#define FLAG_D	0b00001000
+#define FLAG_B	0b00010000
 
+#define FLAG_V	0b01000000
+#define FLAG_N	0b10000000
 
 typedef struct {
 
@@ -67,25 +74,25 @@ void spush(NES_state* nes, uint8_t value);
 uint8_t spull(NES_state* nes);
 
 uint8_t flag_get_carry(NES_state* nes);
-uint8_t flag_set_carry(NES_state* nes, uint8_t value);
+void flag_set_carry(NES_state* nes, uint8_t value);
 
 uint8_t flag_get_zero(NES_state* nes);
-uint8_t flag_set_zero(NES_state* nes, uint8_t value);
+void flag_set_zero(NES_state* nes, uint8_t value);
 
 uint8_t flag_get_interrupt_disable(NES_state* nes);
-uint8_t flag_set_interrupt_disable(NES_state* nes, uint8_t value);
+void flag_set_interrupt_disable(NES_state* nes, uint8_t value);
 
 uint8_t flag_get_decimal(NES_state* nes);
-uint8_t flag_set_decimal(NES_state* nes, uint8_t value);
+void flag_set_decimal(NES_state* nes, uint8_t value);
 
 uint8_t flag_get_break(NES_state* nes);
-uint8_t flag_set_break(NES_state* nes, uint8_t value);
+void flag_set_break(NES_state* nes, uint8_t value);
 
 uint8_t flag_get_overflow(NES_state* nes);
-uint8_t flag_set_overflow(NES_state* nes, uint8_t value);
+void flag_set_overflow(NES_state* nes, uint8_t value);
 
 uint8_t flag_get_negative(NES_state* nes);
-uint8_t flag_set_negative(NES_state* nes, uint8_t value);
+void flag_set_negative(NES_state* nes, uint8_t value);
 
 void flag_set_NVxxDIZC(NES_state* nes, uint8_t NVxxDIZC, uint8_t delay_I);
 uint8_t flag_get_NV00DIZC(NES_state* nes);

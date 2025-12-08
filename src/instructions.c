@@ -118,7 +118,6 @@ opcode_meta_t parse_opcode(uint8_t opcode){
 	return OPCODE_LOOKUP[opcode];
 }
 
-
 //probably one of the worst
 void execute_instruction(NES_state* nes, operation_t op){
 	
